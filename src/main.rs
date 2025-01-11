@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{thread_rng, Rng};
 use rodio::{OutputStream, OutputStreamHandle, Source};
 use std::io::Result;
 use std::thread::sleep;
@@ -37,7 +37,7 @@ impl Iterator for RandomAudioStream {
         self.samples_generated += 1;
 
         // Generate a random i16 value for audio data
-        Some(rand::thread_rng().gen_range(i16::MIN..=i16::MAX))
+        Some(thread_rng().gen_range(i16::MIN..=i16::MAX))
     }
 }
 
