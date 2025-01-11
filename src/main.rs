@@ -1,6 +1,6 @@
-mod saw_wave_stream;
+mod modulated_saw_wave_stream;
 
-use crate::saw_wave_stream::SawWaveStream;
+use crate::modulated_saw_wave_stream::ModulatedSawWaveStream;
 use hound::{SampleFormat, WavSpec, WavWriter};
 use rodio::{OutputStream, OutputStreamHandle, Source};
 use std::fs::File;
@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     let amplitude: f32 = 0.8 * (i16::MAX as f32); // Scale amplitude to fit i16 range
 
     // Create a saw wave audio stream
-    let random_audio: SawWaveStream = SawWaveStream::new(
+    let random_audio: ModulatedSawWaveStream = ModulatedSawWaveStream::new(
         sample_rate,
         channels,
         duration,
@@ -49,8 +49,8 @@ fn main() -> Result<()> {
     let mut writer: WavWriter<BufWriter<File>> =
         WavWriter::create("output.wav", spec).expect("Failed to create WAV file");
 
-    // Write the samples from SawWaveStream to the WAV file
-    let random_audio_for_file: SawWaveStream = SawWaveStream::new(
+    // Write the samples from the audio stream to the WAV file
+    let random_audio_for_file: ModulatedSawWaveStream = ModulatedSawWaveStream::new(
         sample_rate,
         channels,
         duration,
