@@ -12,12 +12,21 @@ fn main() -> Result<()> {
     let sample_rate: u32 = 44100; // Standard audio sample rate
     let channels: u16 = 2; // Stereo
     let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
-    let frequency: f32 = 440.0; // Frequency of the saw wave (e.g., A4 note)
+    let base_frequency: f32 = 440.0; // Base frequency of the saw wave (e.g., A4 note)
+    let modulation_frequency: f32 = 0.1; // How fast the frequency fluctuates (lower = slower)
+    let modulation_depth: f32 = 100.0; // How much the frequency varies up and down (higher = more dramatic)
     let amplitude: f32 = 0.8 * (i16::MAX as f32); // Scale amplitude to fit i16 range
 
-    // Create a random audio stream
-    let random_audio: SawWaveStream =
-        SawWaveStream::new(sample_rate, channels, duration, frequency, amplitude);
+    // Create a saw wave audio stream
+    let random_audio: SawWaveStream = SawWaveStream::new(
+        sample_rate,
+        channels,
+        duration,
+        base_frequency,
+        modulation_frequency,
+        modulation_depth,
+        amplitude,
+    );
 
     // Set up audio output device for playback
     let (_stream, stream_handle): (OutputStream, OutputStreamHandle) =
@@ -40,9 +49,16 @@ fn main() -> Result<()> {
     let mut writer: WavWriter<BufWriter<File>> =
         WavWriter::create("output.wav", spec).expect("Failed to create WAV file");
 
-    // Write the samples from RandomAudioStream to the WAV file
-    let random_audio_for_file: SawWaveStream =
-        SawWaveStream::new(sample_rate, channels, duration, frequency, amplitude);
+    // Write the samples from SawWaveStream to the WAV file
+    let random_audio_for_file: SawWaveStream = SawWaveStream::new(
+        sample_rate,
+        channels,
+        duration,
+        base_frequency,
+        modulation_frequency,
+        modulation_depth,
+        amplitude,
+    );
     for sample in random_audio_for_file {
         writer.write_sample(sample).expect("Failed to write sample");
     }

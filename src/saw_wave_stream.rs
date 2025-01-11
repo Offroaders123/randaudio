@@ -6,9 +6,11 @@ pub struct SawWaveStream {
     channels: u16,
     duration: Duration,
     samples_generated: usize,
-    frequency: f32, // Frequency of the saw wave
-    amplitude: f32, // Amplitude of the wave
-    phase: f32,     // Current phase of the wave
+    base_frequency: f32,       // Base frequency of the saw wave
+    modulation_frequency: f32, // Frequency of modulation (roller coaster speed)
+    modulation_depth: f32,     // How much the frequency changes up and down
+    amplitude: f32,            // Amplitude of the wave
+    phase: f32,                // Current phase of the wave
 }
 
 impl SawWaveStream {
@@ -16,7 +18,9 @@ impl SawWaveStream {
         sample_rate: u32,
         channels: u16,
         duration: Duration,
-        frequency: f32,
+        base_frequency: f32,
+        modulation_frequency: f32,
+        modulation_depth: f32,
         amplitude: f32,
     ) -> Self {
         SawWaveStream {
@@ -24,7 +28,9 @@ impl SawWaveStream {
             channels,
             duration,
             samples_generated: 0,
-            frequency,
+            base_frequency,
+            modulation_frequency,
+            modulation_depth,
             amplitude,
             phase: 0.0,
         }
@@ -45,11 +51,19 @@ impl Iterator for SawWaveStream {
 
         self.samples_generated += 1;
 
-        // Generate a saw wave value by incrementing the phase
+        // Calculate the modulation factor: a sine wave oscillating between -1 and 1
+        let modulation: f32 = (self.modulation_frequency * self.samples_generated as f32
+            / self.sample_rate as f32)
+            .sin();
+
+        // Calculate the new frequency by adding the modulation depth to the base frequency
+        let frequency: f32 = self.base_frequency + modulation * self.modulation_depth;
+
+        // Generate a saw wave value by incrementing the phase based on the modulated frequency
         let sample: i16 = (self.phase * self.amplitude) as i16;
 
-        // Increment the phase to simulate the saw wave pattern
-        self.phase += self.frequency / self.sample_rate as f32;
+        // Increment the phase to simulate the saw wave pattern, modulated by the changing frequency
+        self.phase += frequency / self.sample_rate as f32;
         if self.phase >= 1.0 {
             self.phase -= 1.0;
         }
