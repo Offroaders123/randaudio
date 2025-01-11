@@ -83,17 +83,28 @@ fn main() -> Result<()> {
     let mut writer: WavWriter<BufWriter<File>> =
         WavWriter::create("./output.wav", spec).expect("Failed to create WAV file");
 
+    // Buffer size for playback (chunk of samples)
+    let buffer_size: usize = sample_rate as usize / 10; // Buffer 1/10th of a second
+
+    let mut sample_buffer: Vec<i16> = Vec::with_capacity(buffer_size * channels as usize);
+
     // Stream the audio to both playback and WAV file
     while let Some(sample) = random_audio.next() {
+        // Add sample to buffer
+        sample_buffer.push(sample);
+
         // Write each sample to the WAV file
         writer.write_sample(sample).expect("Failed to write sample");
 
-        // Play the sample by wrapping it in a single-sample source
-        let single_sample_source: SamplesBuffer<i16> =
-            SamplesBuffer::new(channels, sample_rate, vec![sample]);
-        stream_handle
-            .play_raw(single_sample_source.convert_samples())
-            .expect("Failed to play audio stream");
+        // When buffer is full, play it
+        if sample_buffer.len() >= buffer_size * channels as usize {
+            let playback_buffer: SamplesBuffer<i16> =
+                SamplesBuffer::new(channels, sample_rate, sample_buffer.clone());
+            stream_handle
+                .play_raw(playback_buffer.convert_samples())
+                .expect("Failed to play audio stream");
+            sample_buffer.clear();
+        }
     }
 
     // Finalize the WAV file
