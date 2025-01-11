@@ -9,6 +9,8 @@ use std::thread::sleep;
 use std::time::Duration;
 
 fn main() -> Result<()> {
+    let write_file: bool = true;
+
     let sample_rate: u32 = 44100; // Standard audio sample rate
     let channels: u16 = 2; // Stereo
     let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
@@ -37,6 +39,33 @@ fn main() -> Result<()> {
         .play_raw(random_audio.convert_samples())
         .expect("Failed to play audio stream");
 
+    if write_file {
+        write_file_from_stream(
+            sample_rate,
+            channels,
+            duration,
+            base_frequency,
+            modulation_frequency,
+            modulation_depth,
+            amplitude,
+        );
+    }
+
+    // Keep the program running until playback finishes
+    sleep(duration);
+
+    Ok(())
+}
+
+fn write_file_from_stream(
+    sample_rate: u32,
+    channels: u16,
+    duration: Duration,
+    base_frequency: f32,
+    modulation_frequency: f32,
+    modulation_depth: f32,
+    amplitude: f32,
+) {
     // Create WAV file
     let spec: WavSpec = WavSpec {
         channels,
@@ -64,9 +93,4 @@ fn main() -> Result<()> {
     }
 
     writer.finalize().expect("Failed to finalize WAV file");
-
-    // Keep the program running until playback finishes
-    sleep(duration);
-
-    Ok(())
 }
