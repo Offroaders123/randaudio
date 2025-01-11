@@ -1,9 +1,8 @@
 use hound::{SampleFormat, WavSpec, WavWriter};
 use rand::{thread_rng, Rng};
-use rodio::{OutputStream, OutputStreamHandle, Source};
+use rodio::{buffer::SamplesBuffer, OutputStream, OutputStreamHandle, Source};
 use std::fs::File;
 use std::io::{BufWriter, Result};
-use std::iter::once;
 use std::time::Duration;
 
 struct RandomAudioStream {
@@ -67,7 +66,8 @@ fn main() -> Result<()> {
     let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
 
     // Create a random audio stream
-    let random_audio: RandomAudioStream = RandomAudioStream::new(sample_rate, channels, duration);
+    let mut random_audio: RandomAudioStream =
+        RandomAudioStream::new(sample_rate, channels, duration);
 
     // Set up audio output device
     let (_stream, stream_handle): (OutputStream, OutputStreamHandle) =
@@ -84,17 +84,17 @@ fn main() -> Result<()> {
         WavWriter::create("./output.wav", spec).expect("Failed to create WAV file");
 
     // Stream the audio to both playback and WAV file
-    random_audio
-        .inspect(|&sample| {
-            // Write each sample to the WAV file
-            writer.write_sample(sample).expect("Failed to write sample");
-        })
-        .for_each(|sample| {
-            // Allow playback (convert_samples is used here for compatibility)
-            stream_handle
-                .play_raw(once(sample).convert_samples())
-                .expect("Failed to play audio stream");
-        });
+    while let Some(sample) = random_audio.next() {
+        // Write each sample to the WAV file
+        writer.write_sample(sample).expect("Failed to write sample");
+
+        // Play the sample by wrapping it in a single-sample source
+        let single_sample_source: SamplesBuffer<i16> =
+            SamplesBuffer::new(channels, sample_rate, vec![sample]);
+        stream_handle
+            .play_raw(single_sample_source.convert_samples())
+            .expect("Failed to play audio stream");
+    }
 
     // Finalize the WAV file
     writer.finalize().expect("Failed to finalize WAV file");
