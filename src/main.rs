@@ -1,10 +1,7 @@
-use hound::{SampleFormat, WavSpec, WavWriter};
 use rand::{thread_rng, Rng};
-use rodio::{buffer::SamplesBuffer, OutputStream, OutputStreamHandle, Source};
-use std::fs::File;
-use std::io::{BufWriter, Result};
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread::{spawn, JoinHandle};
+use rodio::{OutputStream, OutputStreamHandle, Source};
+use std::io::Result;
+use std::thread::sleep;
 use std::time::Duration;
 
 struct RandomAudioStream {
@@ -74,61 +71,13 @@ fn main() -> Result<()> {
     let (_stream, stream_handle): (OutputStream, OutputStreamHandle) =
         OutputStream::try_default().expect("Failed to get default output device");
 
-    // Create a WAV writer
-    let spec: WavSpec = WavSpec {
-        channels,
-        sample_rate,
-        bits_per_sample: 16,
-        sample_format: SampleFormat::Int,
-    };
-    let mut writer: WavWriter<BufWriter<File>> =
-        WavWriter::create("./output.wav", spec).expect("Failed to create WAV file");
+    // Play the audio stream
+    stream_handle
+        .play_raw(random_audio.convert_samples())
+        .expect("Failed to play audio stream");
 
-    // Create a channel for producer-consumer communication
-    let (tx, rx): (Sender<Vec<i16>>, Receiver<Vec<i16>>) = channel();
-
-    // Spawn a thread for audio playback
-    let playback_handle: JoinHandle<()> = spawn(move || {
-        for buffer in rx {
-            let playback_buffer: SamplesBuffer<i16> =
-                SamplesBuffer::new(channels, sample_rate, buffer);
-            stream_handle
-                .play_raw(playback_buffer.convert_samples())
-                .expect("Failed to play audio stream");
-        }
-    });
-
-    // Generate audio samples and send them to the playback thread
-    let buffer_size: usize = sample_rate as usize / 10; // Buffer 1/10th of a second
-    let mut sample_buffer: Vec<i16> = Vec::with_capacity(buffer_size * channels as usize);
-
-    for sample in random_audio {
-        sample_buffer.push(sample);
-
-        // Write each sample to the WAV file
-        writer.write_sample(sample).expect("Failed to write sample");
-
-        // If buffer is full, send it to the playback thread
-        if sample_buffer.len() >= buffer_size * channels as usize {
-            tx.send(sample_buffer.clone())
-                .expect("Failed to send buffer to playback thread");
-            sample_buffer.clear();
-        }
-    }
-
-    // Send any remaining samples
-    if !sample_buffer.is_empty() {
-        tx.send(sample_buffer).expect("Failed to send final buffer");
-    }
-
-    // Drop the sender to signal the playback thread to stop
-    drop(tx);
-
-    // Wait for playback thread to finish
-    playback_handle.join().expect("Playback thread panicked");
-
-    // Finalize the WAV file
-    writer.finalize().expect("Failed to finalize WAV file");
+    // Keep the program running until playback finishes
+    sleep(duration);
 
     Ok(())
 }

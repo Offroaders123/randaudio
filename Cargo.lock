@@ -577,7 +577,6 @@ dependencies = [
 name = "randaudio"
 version = "0.1.0"
 dependencies = [
- "hound",
  "rand",
  "rodio",
 ]
