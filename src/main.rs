@@ -1,6 +1,7 @@
 use rand::Rng;
 use rodio::{OutputStream, OutputStreamHandle, Source};
 use std::io::Result;
+use std::thread::sleep;
 use std::time::Duration;
 
 struct RandomAudioStream {
@@ -73,7 +74,10 @@ fn main() -> Result<()> {
     // Play the audio stream
     stream_handle
         .play_raw(random_audio.convert_samples())
-        .unwrap();
+        .expect("Failed to play audio stream");
+
+    // Keep the program running until playback finishes
+    sleep(duration);
 
     Ok(())
 }
