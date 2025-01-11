@@ -1,6 +1,6 @@
-mod modulated_saw_wave_stream;
+mod scaled_saw_wave_stream;
 
-use crate::modulated_saw_wave_stream::ModulatedSawWaveStream;
+use crate::scaled_saw_wave_stream::ScaledSawWaveStream;
 use hound::{SampleFormat, WavSpec, WavWriter};
 use rodio::{OutputStream, OutputStreamHandle, Source};
 use std::fs::File;
@@ -12,13 +12,13 @@ fn main() -> Result<()> {
     let sample_rate: u32 = 44100; // Standard audio sample rate
     let channels: u16 = 2; // Stereo
     let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
-    let base_frequency: f32 = 440.0; // Base frequency of the saw wave (e.g., A4 note)
-    let modulation_frequency: f32 = 0.1; // How fast the frequency fluctuates (lower = slower)
-    let modulation_depth: f32 = 100.0; // How much the frequency varies up and down (higher = more dramatic)
+    let base_frequency: f32 = 60.0; // Base frequency of the saw wave (e.g., A4 note)
+    let modulation_frequency: f32 = 4.0; // How fast the frequency fluctuates (lower = slower)
+    let modulation_depth: f32 = 40.0; // How much the frequency varies up and down (higher = more dramatic)
     let amplitude: f32 = 0.8 * (i16::MAX as f32); // Scale amplitude to fit i16 range
 
     // Create a saw wave audio stream
-    let random_audio: ModulatedSawWaveStream = ModulatedSawWaveStream::new(
+    let random_audio: ScaledSawWaveStream = ScaledSawWaveStream::new(
         sample_rate,
         channels,
         duration,
@@ -50,7 +50,7 @@ fn main() -> Result<()> {
         WavWriter::create("output.wav", spec).expect("Failed to create WAV file");
 
     // Write the samples from the audio stream to the WAV file
-    let random_audio_for_file: ModulatedSawWaveStream = ModulatedSawWaveStream::new(
+    let random_audio_for_file: ScaledSawWaveStream = ScaledSawWaveStream::new(
         sample_rate,
         channels,
         duration,
