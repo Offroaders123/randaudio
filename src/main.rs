@@ -3,8 +3,9 @@ use rand::{thread_rng, Rng};
 use rodio::{buffer::SamplesBuffer, OutputStream, OutputStreamHandle, Source};
 use std::fs::File;
 use std::io::{BufWriter, Result};
-use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread::{spawn, JoinHandle};
+use std::time::Duration;
 
 struct RandomAudioStream {
     sample_rate: u32,
@@ -67,8 +68,7 @@ fn main() -> Result<()> {
     let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
 
     // Create a random audio stream
-    let mut random_audio: RandomAudioStream =
-        RandomAudioStream::new(sample_rate, channels, duration);
+    let random_audio: RandomAudioStream = RandomAudioStream::new(sample_rate, channels, duration);
 
     // Set up audio output device
     let (_stream, stream_handle): (OutputStream, OutputStreamHandle) =
@@ -84,42 +84,48 @@ fn main() -> Result<()> {
     let mut writer: WavWriter<BufWriter<File>> =
         WavWriter::create("./output.wav", spec).expect("Failed to create WAV file");
 
-    // Buffer size for playback (chunk of samples)
-    let buffer_size: usize = sample_rate as usize / 10; // Buffer 1/10th of a second
+    // Create a channel for producer-consumer communication
+    let (tx, rx): (Sender<Vec<i16>>, Receiver<Vec<i16>>) = channel();
 
+    // Spawn a thread for audio playback
+    let playback_handle: JoinHandle<()> = spawn(move || {
+        for buffer in rx {
+            let playback_buffer: SamplesBuffer<i16> =
+                SamplesBuffer::new(channels, sample_rate, buffer);
+            stream_handle
+                .play_raw(playback_buffer.convert_samples())
+                .expect("Failed to play audio stream");
+        }
+    });
+
+    // Generate audio samples and send them to the playback thread
+    let buffer_size: usize = sample_rate as usize / 10; // Buffer 1/10th of a second
     let mut sample_buffer: Vec<i16> = Vec::with_capacity(buffer_size * channels as usize);
 
-    // Synchronize playback start time
-    let playback_start: Instant = Instant::now();
-
-    // Stream the audio to both playback and WAV file
-    while let Some(sample) = random_audio.next() {
-        // Add sample to buffer
+    for sample in random_audio {
         sample_buffer.push(sample);
 
         // Write each sample to the WAV file
         writer.write_sample(sample).expect("Failed to write sample");
 
-        // When buffer is full, play it
+        // If buffer is full, send it to the playback thread
         if sample_buffer.len() >= buffer_size * channels as usize {
-            let playback_buffer: SamplesBuffer<i16> =
-                SamplesBuffer::new(channels, sample_rate, sample_buffer.clone());
-            stream_handle
-                .play_raw(playback_buffer.convert_samples())
-                .expect("Failed to play audio stream");
+            tx.send(sample_buffer.clone())
+                .expect("Failed to send buffer to playback thread");
             sample_buffer.clear();
-
-            // Synchronize playback with real time
-            let elapsed: Duration = playback_start.elapsed();
-            let expected_elapsed: Duration = Duration::from_secs_f64(
-                random_audio.samples_generated as f64 / (sample_rate as f64 * channels as f64),
-            );
-
-            if elapsed < expected_elapsed {
-                sleep(expected_elapsed - elapsed);
-            }
         }
     }
+
+    // Send any remaining samples
+    if !sample_buffer.is_empty() {
+        tx.send(sample_buffer).expect("Failed to send final buffer");
+    }
+
+    // Drop the sender to signal the playback thread to stop
+    drop(tx);
+
+    // Wait for playback thread to finish
+    playback_handle.join().expect("Playback thread panicked");
 
     // Finalize the WAV file
     writer.finalize().expect("Failed to finalize WAV file");
