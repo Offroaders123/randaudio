@@ -3,7 +3,8 @@ use rand::{thread_rng, Rng};
 use rodio::{buffer::SamplesBuffer, OutputStream, OutputStreamHandle, Source};
 use std::fs::File;
 use std::io::{BufWriter, Result};
-use std::time::Duration;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 
 struct RandomAudioStream {
     sample_rate: u32,
@@ -88,6 +89,9 @@ fn main() -> Result<()> {
 
     let mut sample_buffer: Vec<i16> = Vec::with_capacity(buffer_size * channels as usize);
 
+    // Synchronize playback start time
+    let playback_start: Instant = Instant::now();
+
     // Stream the audio to both playback and WAV file
     while let Some(sample) = random_audio.next() {
         // Add sample to buffer
@@ -104,6 +108,16 @@ fn main() -> Result<()> {
                 .play_raw(playback_buffer.convert_samples())
                 .expect("Failed to play audio stream");
             sample_buffer.clear();
+
+            // Synchronize playback with real time
+            let elapsed: Duration = playback_start.elapsed();
+            let expected_elapsed: Duration = Duration::from_secs_f64(
+                random_audio.samples_generated as f64 / (sample_rate as f64 * channels as f64),
+            );
+
+            if elapsed < expected_elapsed {
+                sleep(expected_elapsed - elapsed);
+            }
         }
     }
 
