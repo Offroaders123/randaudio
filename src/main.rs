@@ -1,6 +1,6 @@
-mod random_audio_stream;
+mod saw_wave_stream;
 
-use crate::random_audio_stream::RandomAudioStream;
+use crate::saw_wave_stream::SawWaveStream;
 use hound::{SampleFormat, WavSpec, WavWriter};
 use rodio::{OutputStream, OutputStreamHandle, Source};
 use std::fs::File;
@@ -12,9 +12,12 @@ fn main() -> Result<()> {
     let sample_rate: u32 = 44100; // Standard audio sample rate
     let channels: u16 = 2; // Stereo
     let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
+    let frequency: f32 = 440.0; // Frequency of the saw wave (e.g., A4 note)
+    let amplitude: f32 = 0.8 * (i16::MAX as f32); // Scale amplitude to fit i16 range
 
     // Create a random audio stream
-    let random_audio: RandomAudioStream = RandomAudioStream::new(sample_rate, channels, duration);
+    let random_audio: SawWaveStream =
+        SawWaveStream::new(sample_rate, channels, duration, frequency, amplitude);
 
     // Set up audio output device for playback
     let (_stream, stream_handle): (OutputStream, OutputStreamHandle) =
@@ -38,8 +41,8 @@ fn main() -> Result<()> {
         WavWriter::create("output.wav", spec).expect("Failed to create WAV file");
 
     // Write the samples from RandomAudioStream to the WAV file
-    let random_audio_for_file: RandomAudioStream =
-        RandomAudioStream::new(sample_rate, channels, duration);
+    let random_audio_for_file: SawWaveStream =
+        SawWaveStream::new(sample_rate, channels, duration, frequency, amplitude);
     for sample in random_audio_for_file {
         writer.write_sample(sample).expect("Failed to write sample");
     }
