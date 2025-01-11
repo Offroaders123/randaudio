@@ -1,7 +1,9 @@
+use hound::{SampleFormat, WavSpec, WavWriter};
 use rand::{thread_rng, Rng};
 use rodio::{OutputStream, OutputStreamHandle, Source};
-use std::io::Result;
-use std::thread::sleep;
+use std::fs::File;
+use std::io::{BufWriter, Result};
+use std::iter::once;
 use std::time::Duration;
 
 struct RandomAudioStream {
@@ -71,13 +73,31 @@ fn main() -> Result<()> {
     let (_stream, stream_handle): (OutputStream, OutputStreamHandle) =
         OutputStream::try_default().expect("Failed to get default output device");
 
-    // Play the audio stream
-    stream_handle
-        .play_raw(random_audio.convert_samples())
-        .expect("Failed to play audio stream");
+    // Create a WAV writer
+    let spec: WavSpec = WavSpec {
+        channels,
+        sample_rate,
+        bits_per_sample: 16,
+        sample_format: SampleFormat::Int,
+    };
+    let mut writer: WavWriter<BufWriter<File>> =
+        WavWriter::create("./output.wav", spec).expect("Failed to create WAV file");
 
-    // Keep the program running until playback finishes
-    sleep(duration);
+    // Stream the audio to both playback and WAV file
+    random_audio
+        .inspect(|&sample| {
+            // Write each sample to the WAV file
+            writer.write_sample(sample).expect("Failed to write sample");
+        })
+        .for_each(|sample| {
+            // Allow playback (convert_samples is used here for compatibility)
+            stream_handle
+                .play_raw(once(sample).convert_samples())
+                .expect("Failed to play audio stream");
+        });
+
+    // Finalize the WAV file
+    writer.finalize().expect("Failed to finalize WAV file");
 
     Ok(())
 }
