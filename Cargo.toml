@@ -3,6 +3,14 @@ name = "randaudio"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
+wasm-bindgen = "0.2"
 rand = "0.8.5"
-rodio = "0.20.1"
+getrandom = { version = "0.2", features = ["js"] }
+
+[dependencies.web-sys]
+version = "0.3.76"
+features = ["AudioBuffer", "AudioBufferSourceNode", "AudioContext", "AudioDestinationNode"]
