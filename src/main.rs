@@ -11,10 +11,10 @@ use std::time::Duration;
 fn main() -> Result<()> {
     let write_file: bool = false;
 
-    let file: &str = "./Cargo.lock";
+    let file: &str = "/Applications/GarageBand.app/Contents/MacOS/GarageBand";
     let sample_rate: u32 = 44100; // Standard audio sample rate
     let channels: u16 = 2; // Stereo
-    let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
+    let duration: Duration = Duration::from_secs(100); // Play for 10 seconds
 
     // Create a saw wave audio stream
     let random_audio: FileAudioStream = FileAudioStream::new(file, sample_rate, channels)?;
