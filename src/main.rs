@@ -11,20 +11,13 @@ use std::time::Duration;
 fn main() -> Result<()> {
     let write_file: bool = false;
 
+    let file: &str = "./Cargo.lock";
     let sample_rate: u32 = 44100; // Standard audio sample rate
     let channels: u16 = 2; // Stereo
     let duration: Duration = Duration::from_secs(10); // Play for 10 seconds
-    // let base_frequency: f32 = 60.0; // Base frequency of the saw wave (e.g., A4 note)
-    // let modulation_frequency: f32 = 4.0; // How fast the frequency fluctuates (lower = slower)
-    // let modulation_depth: f32 = 40.0; // How much the frequency varies up and down (higher = more dramatic)
-    // let amplitude: f32 = 0.8 * (i16::MAX as f32); // Scale amplitude to fit i16 range
 
     // Create a saw wave audio stream
-    let random_audio: FileAudioStream = FileAudioStream::new(
-        sample_rate,
-        channels,
-        duration,
-    );
+    let random_audio: FileAudioStream = FileAudioStream::new(file, sample_rate, channels)?;
 
     // Set up audio output device for playback
     let (_stream, stream_handle): (OutputStream, OutputStreamHandle) =
@@ -36,15 +29,7 @@ fn main() -> Result<()> {
         .expect("Failed to play audio stream");
 
     if write_file {
-        write_file_from_stream(
-            sample_rate,
-            channels,
-            duration,
-            // base_frequency,
-            // modulation_frequency,
-            // modulation_depth,
-            // amplitude,
-        );
+        write_file_from_stream(file, sample_rate, channels)?;
     }
 
     // Keep the program running until playback finishes
@@ -53,15 +38,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn write_file_from_stream(
-    sample_rate: u32,
-    channels: u16,
-    duration: Duration,
-    // base_frequency: f32,
-    // modulation_frequency: f32,
-    // modulation_depth: f32,
-    // amplitude: f32,
-) {
+fn write_file_from_stream(file: &str, sample_rate: u32, channels: u16) -> Result<()> {
     // Create WAV file
     let spec: WavSpec = WavSpec {
         channels,
@@ -75,14 +52,12 @@ fn write_file_from_stream(
         WavWriter::create("output.wav", spec).expect("Failed to create WAV file");
 
     // Write the samples from the audio stream to the WAV file
-    let random_audio_for_file: FileAudioStream = FileAudioStream::new(
-        sample_rate,
-        channels,
-        duration,
-    );
+    let random_audio_for_file: FileAudioStream = FileAudioStream::new(file, sample_rate, channels)?;
     for sample in random_audio_for_file {
         writer.write_sample(sample).expect("Failed to write sample");
     }
 
     writer.finalize().expect("Failed to finalize WAV file");
+
+    Ok(())
 }

@@ -1,22 +1,40 @@
-use rand::{thread_rng, Rng};
 use rodio::Source;
+use std::fs::File;
+use std::io::{Read, Result};
 use std::time::Duration;
 
 pub struct FileAudioStream {
     sample_rate: u32,
     channels: u16,
+    data: Vec<i16>,
+    position: usize,
     duration: Duration,
-    samples_generated: usize,
 }
 
 impl FileAudioStream {
-    pub fn new(sample_rate: u32, channels: u16, duration: Duration) -> Self {
-        FileAudioStream {
+    pub fn new(file_path: &str, sample_rate: u32, channels: u16) -> Result<Self> {
+        // Read the file's bytes
+        let mut file: File = File::open(file_path)?;
+        let mut raw_data: Vec<u8> = Vec::new();
+        file.read_to_end(&mut raw_data)?;
+
+        // Interpret the file bytes as `i16` samples
+        let data: Vec<i16> = raw_data
+            .chunks_exact(2)
+            .map(|bytes| i16::from_le_bytes([bytes[0], bytes[1]]))
+            .collect();
+
+        // Estimate the duration based on the number of samples
+        let duration: Duration =
+            Duration::from_secs_f32(data.len() as f32 / (sample_rate as f32 * channels as f32));
+
+        Ok(FileAudioStream {
             sample_rate,
             channels,
+            data,
+            position: 0,
             duration,
-            samples_generated: 0,
-        }
+        })
     }
 }
 
@@ -24,18 +42,13 @@ impl Iterator for FileAudioStream {
     type Item = i16;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Stop generating samples after the intended duration
-        let total_samples: usize =
-            self.sample_rate as usize * self.duration.as_secs() as usize * self.channels as usize;
-
-        if self.samples_generated >= total_samples {
-            return None;
+        if self.position < self.data.len() {
+            let sample: i16 = self.data[self.position];
+            self.position += 1;
+            Some(sample)
+        } else {
+            None
         }
-
-        self.samples_generated += 1;
-
-        // Generate a random i16 value for audio data
-        Some(thread_rng().gen_range(i16::MIN..=i16::MAX))
     }
 }
 
